@@ -1,0 +1,96 @@
+import numpy as np
+import Image
+import matplotlib.pyplot as plt
+from scipy import misc
+
+def imageShow(image, title=""):
+    plt.imshow(image)
+    plt.title(title)
+    plt.show() #for showing image
+
+main_path="C:/Users/raro/Desktop/rome.jpg"
+main_img=np.asarray(misc.imread(main_path))
+#imageShow(main_img, "Main Image")
+#print(main_img.shape) #(2848L, 4272L, 3L)
+
+np.savetxt("C:/Users/raro/Desktop/rome_o.csv",main_img[:,:,0], delimiter=",")
+secret_path="C:/Users/raro/Desktop/girl.jpg"
+secret_img=np.asarray(misc.imread(secret_path))
+secret_img=secret_img[50:450:2,50:450:2]
+#imageShow(secret_img, "Secret Image")
+#print(secret_img.shape) #(500L, 500L, 3L)
+
+for i_rgb in range(3):
+    m=n=curr=done=0
+    print("Performing stage ", i_rgb+1, " of 3...")
+    for i in range(main_img.shape[0]): #Length
+        for j in range(main_img.shape[1]): #Height
+            if(m>=secret_img.shape[0]):  #i.e. End of Secret image reached
+                done=1
+                break
+
+            #Extract bit to be encrypted from the Secret Image
+            #print(i,j,secret_img[m,n,i_rgb])
+            curr_bit=secret_img[m,n,i_rgb]&1    #Get 1st bit(LSB)
+            secret_img[m,n,i_rgb]=secret_img[m,n,i_rgb]>>1  
+            curr=curr+1
+            
+            #Encrypt the bit in the main image
+            if(curr_bit==1):
+                main_img[i,j,i_rgb]=main_img[i,j,i_rgb]&255 #1111 1111 
+            else:    #i.e. current bit is 0
+                main_img[i,j,i_rgb]=main_img[i,j,i_rgb]&254 #1111 1110
+            
+            if(curr>=8):   #i.e. all the 8 bits of a secret image pixel have been processed
+                curr=0
+                n=n+1 #Move to the next byte right
+                
+            if(n>=secret_img.shape[1]):  #i.e. all the pixels in one row have been read
+                n=0
+                m=m+1 #Move to the next row below
+            
+        if(done==1):
+            break
+
+imageShow(main_img, "Encrypted Main Image")
+
+
+#Decryption
+print("Starting the process of decryption...")
+re_secret_img=np.zeros_like(secret_img)
+for i_rgb in range(3):
+    print("Performing stage ", i_rgb+1, " of 3...")
+    m=n=curr=done=0
+    temp_byte=0
+    print("Decrypting the image....")
+    for i in range(main_img.shape[0]): #Length
+        for j in range(main_img.shape[1]): #Height
+            if(m>=re_secret_img.shape[0]):  #i.e. End of Secret image reached
+                done=1
+                break
+    
+            #Extract bit to be decrypted from main Image
+            curr_bit=main_img[i,j,i_rgb]&1    #Get 1st bit(LSB)
+            temp_byte=temp_byte+curr_bit*pow(2,curr)  
+            curr=curr+1
+            
+            
+            if(curr>=8):   #i.e. all the 8 bits of a secret image pixel have been processed
+                re_secret_img[m,n,i_rgb]=temp_byte
+                #print(m,n,temp_byte)
+                #Reset the temp byte
+                temp_byte=0
+                curr=0
+                n=n+1 #Move to the next byte right
+                
+            if(n>=secret_img.shape[1]):  #i.e. all the pixels in one row have been read
+                n=0
+                m=m+1 #Move to the next row below
+            
+        if(done==1):
+            break
+    
+imageShow(re_secret_img[:,:,0], "Decrypted Secret Image(Red)")
+imageShow(re_secret_img[:,:,0], "Decrypted Secret Image(Green)")
+imageShow(re_secret_img[:,:,0], "Decrypted Secret Image(Blue)")
+imageShow(re_secret_img, "Decrypted Secret Image-Final")
